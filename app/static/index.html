@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge AI - RAG System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Knowledge AI</h1>
+            <p class="subtitle">Retrieval-Augmented Generation System</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" data-tab="ingest">Ingest Document</button>
+            <button class="tab-button" data-tab="query">Query Knowledge Base</button>
+        </div>
+
+        <!-- Ingest Tab -->
+        <div id="ingest-tab" class="tab-content active">
+            <div class="card">
+                <h2>Add Document to Knowledge Base</h2>
+                <form id="ingest-form">
+                    <div class="form-group">
+                        <label for="document-text">Document Text</label>
+                        <textarea 
+                            id="document-text" 
+                            rows="8" 
+                            placeholder="Enter the text content you want to add to the knowledge base..."
+                            required
+                        ></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="document-id">Document ID (Optional)</label>
+                        <input 
+                            type="text" 
+                            id="document-id" 
+                            placeholder="Leave empty to auto-generate"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="document-metadata">Metadata (JSON, Optional)</label>
+                        <textarea 
+                            id="document-metadata" 
+                            rows="3" 
+                            placeholder='{"source": "example", "topic": "ai"}'
+                        ></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Ingest Document</button>
+                </form>
+                <div id="ingest-result" class="result-area"></div>
+            </div>
+        </div>
+
+        <!-- Query Tab -->
+        <div id="query-tab" class="tab-content">
+            <div class="card">
+                <h2>Ask a Question</h2>
+                <form id="query-form">
+                    <div class="form-group">
+                        <label for="query-text">Your Question</label>
+                        <textarea 
+                            id="query-text" 
+                            rows="3" 
+                            placeholder="Ask a question based on the documents in the knowledge base..."
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Advanced Options</label>
+                        <div class="options-grid">
+                            <div class="option-group">
+                                <label for="prompt-style">Prompt Style:</label>
+                                <select id="prompt-style">
+                                    <option value="">Default</option>
+                                    <option value="standard">Standard</option>
+                                    <option value="chain_of_thought">Chain of Thought</option>
+                                    <option value="few_shot">Few-Shot Examples</option>
+                                    <option value="reasoning">Reasoning</option>
+                                </select>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="use-agent" />
+                                    <span>🤖 Agentic AI Mode</span>
+                                </label>
+                                <small>Uses autonomous agent with tool access</small>
+                            </div>
+                            
+                            <div class="option-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="use-reasoning" />
+                                    <span>🧠 Reasoning Model</span>
+                                </label>
+                                <small>Uses reasoning-optimized model (if available)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Get Answer</button>
+                </form>
+                <div id="query-result" class="result-area"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Knowledge AI API v0.1.0 | <a href="/docs" target="_blank">API Documentation</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
