@@ -1,63 +1,52 @@
 """MCP client for connecting to external MCP servers."""
 from typing import List, Dict, Any, Optional
-from mcp import ClientSession, StdioServerParameters
+import httpx
 from app.core.logging import setup_logging
 
 logger = setup_logging()
 
 
 class MCPClient:
-    """Client for connecting to external MCP servers."""
+    """Client for connecting to external MCP servers via HTTP."""
     
-    def __init__(self, server_name: str, command: List[str], args: Optional[List[str]] = None):
+    def __init__(self, server_name: str, base_url: str):
         """
         Initialize MCP client.
         
         Args:
             server_name: Name of the MCP server
-            command: Command to run the server (e.g., ["python", "server.py"])
-            args: Optional arguments for the server
+            base_url: Base URL of the MCP server (e.g., "http://localhost:8001")
         """
         self.server_name = server_name
-        self.command = command
-        self.args = args or []
-        self.session: Optional[ClientSession] = None
+        self.base_url = base_url.rstrip('/')
+        self.connected = False
     
     async def connect(self):
-        """Connect to the MCP server."""
+        """Connect to the MCP server (verify it's accessible)."""
         try:
-            server_params = StdioServerParameters(
-                command=self.command[0],
-                args=self.command[1:] + self.args
-            )
-            
-            self.session = ClientSession(server_params)
-            await self.session.initialize()
-            
-            logger.info(f"Connected to MCP server: {self.server_name}")
-            return True
-        
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.base_url}/health", timeout=5.0)
+                if response.status_code == 200:
+                    self.connected = True
+                    logger.info(f"Connected to MCP server: {self.server_name}")
+                    return True
+                else:
+                    logger.warning(f"MCP server {self.server_name} returned status {response.status_code}")
+                    return False
         except Exception as e:
             logger.error(f"Failed to connect to MCP server {self.server_name}: {e}")
             return False
     
     async def list_tools(self) -> List[Dict[str, Any]]:
         """List available tools from the MCP server."""
-        if not self.session:
-            await self.connect()
-        
         try:
-            tools = await self.session.list_tools()
-            return [
-                {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "inputSchema": tool.inputSchema
-                }
-                for tool in tools.tools
-            ]
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{self.base_url}/mcp/tools", timeout=10.0)
+                response.raise_for_status()
+                data = response.json()
+                return data.get("tools", [])
         except Exception as e:
-            logger.error(f"Error listing tools: {e}")
+            logger.error(f"Error listing tools from {self.server_name}: {e}")
             return []
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> List[str]:
@@ -71,36 +60,25 @@ class MCPClient:
         Returns:
             List of text results
         """
-        if not self.session:
-            await self.connect()
-        
         try:
-            result = await self.session.call_tool(tool_name, arguments)
-            
-            # Extract text content
-            texts = []
-            for content in result.content:
-                if hasattr(content, 'text'):
-                    texts.append(content.text)
-                elif isinstance(content, dict) and 'text' in content:
-                    texts.append(content['text'])
-            
-            return texts
-        
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/mcp/tools/{tool_name}",
+                    json=arguments,
+                    timeout=60.0
+                )
+                response.raise_for_status()
+                data = response.json()
+                result_text = data.get("result", "")
+                return [result_text] if result_text else []
         except Exception as e:
-            logger.error(f"Error calling tool {tool_name}: {e}")
+            logger.error(f"Error calling tool {tool_name} on {self.server_name}: {e}")
             return [f"Error: {str(e)}"]
     
     async def disconnect(self):
         """Disconnect from the MCP server."""
-        if self.session:
-            try:
-                await self.session.close()
-                logger.info(f"Disconnected from MCP server: {self.server_name}")
-            except Exception as e:
-                logger.error(f"Error disconnecting: {e}")
-            finally:
-                self.session = None
+        self.connected = False
+        logger.info(f"Disconnected from MCP server: {self.server_name}")
 
 
 class MCPToolRegistry:
